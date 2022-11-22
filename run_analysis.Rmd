@@ -1,0 +1,133 @@
+---
+title: "Getting and cleaning data - Assingment 1"
+author: "Angel Villamizar"
+date: "2022-11-22"
+output:
+  html_document:
+    keep_md: true
+    theme: cerulean
+    toc: yes
+    toc_depth: 1
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+The purpose of this project is to demonstrate your ability to collect, work with, and clean a data set. The goal is to prepare tidy data that can be used for later analysis. You will be graded by your peers on a series of yes\no questions related to the project. You will be required to submit: 1) a tidy data set as described below, 2) a link to a Github repository with your script for performing the analysis, and 3) a code book that describes the variables, the data, and any transformations or work that you performed to clean up the data called CodeBook.md. You should also include a README.md in the repo with your scripts. This repo explains how all of the scripts work and how they are connected.
+
+One of the most exciting areas in all of data science right now is wearable computing - see for example this article . Companies like Fitbit, Nike, and Jawbone Up are racing to develop the most advanced algorithms to attract new users. The data linked to from the course website represent data collected from the accelerometers from the Samsung Galaxy S smartphone. 
+
+You should create one R script called run_analysis.R that does the following 5 steps:
+
+# Part 1
+
+Merges the training and the test sets to create one data set.
+```{r}
+library(data.table)
+
+setwd(paste0("C:/Users/VillamizarA/OneDrive - Kantar/KWP/Angel/ACADEMY/COURSERA/Getting and Cleaning Data/Week 4"))
+
+url <- "https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip"
+
+destfile <- paste0(getwd(),"/getdata_projectfiles_UCI HAR Dataset.zip")
+
+download.file(url,destfile)
+
+unzip(destfile)
+
+## test data:
+XTest<- read.table("UCI HAR Dataset/test/X_test.txt")
+YTest<- read.table("UCI HAR Dataset/test/Y_test.txt")
+SubjectTest <-read.table("UCI HAR Dataset/test/subject_test.txt")
+
+## train data:
+XTrain<- read.table("UCI HAR Dataset/train/X_train.txt")
+YTrain<- read.table("UCI HAR Dataset/train/Y_train.txt")
+SubjectTrain <-read.table("UCI HAR Dataset/train/subject_train.txt")
+
+## features and activity
+features<-read.table("UCI HAR Dataset/features.txt")
+activity<-read.table("UCI HAR Dataset/activity_labels.txt")
+
+##Part1 - merges train and test data in one dataset (full dataset at the end)
+X<-rbind(XTest, XTrain)
+Y<-rbind(YTest, YTrain)
+Subject<-rbind(SubjectTest, SubjectTrain)
+```
+
+Dimension of new datasets:
+```{r}
+dim(X)
+
+dim(Y)
+
+dim(Subject)
+```
+
+# Part 2
+
+Extracts only the measurements on the mean and standard deviation for each measurement.
+```{r}
+##getting features indeces which contain mean() and std() in their name
+index<-grep("mean\\(\\)|std\\(\\)", features[,2]) 
+length(index) ## count of features
+```
+
+```{r}
+X<-X[,index] ## getting only variables with mean\stdev
+dim(X) ## checking dim of subset 
+```
+
+# Part 3
+
+Uses descriptive activity names to name the activities in the data set
+```{r}
+## replacing numeric values with lookup value from activity.txt; won't reorder Y set
+Y[,1]<-activity[Y[,1],2]
+
+head(Y) 
+```
+
+# Part 4
+
+Appropriately labels the data set with descriptive variable names.
+```{r}
+## getting names for variables
+names<-features[index,2] 
+
+## updating colNames for new dataset
+names(X)<-names 
+names(Subject)<-"SubjectID"
+names(Y)<-"Activity"
+    
+CleanedData<-cbind(Subject, Y, X)
+
+## first 5 columns
+head(CleanedData[,c(1:5)])
+```
+
+# Part 5
+
+From the data set in step 4, creates a second, independent tidy data set with the average of each variable for each activity and each subject.
+```{r}
+CleanedData<-data.table(CleanedData)
+
+## features average by Subject and by activity
+TidyData <- CleanedData[, lapply(.SD, mean), by = 'SubjectID,Activity']
+dim(TidyData)
+```
+
+```{r}
+write.table(TidyData, file = "Tidy.txt", row.names = FALSE, sep = ",", quote = FALSE)
+```
+
+First 12 rows and 5 columns in Tidy dataset:
+```{r}
+head(TidyData[order(SubjectID)][,c(1:5), with = FALSE],12) 
+```
+
